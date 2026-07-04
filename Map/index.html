@@ -96,6 +96,12 @@
     </div>
     <label class="field-label" for="route-name" id="route-name-label">Rota adı</label>
     <input id="route-name" type="text" placeholder="ör. Ev Yolu" maxlength="40" autocomplete="off" />
+    <label class="field-label" id="activity-type-label">Aktivite Tipi</label>
+    <div class="activity-row" id="activity-row">
+      <button class="activity-btn active" data-type="walk">🚶 Yürüyüş</button>
+      <button class="activity-btn" data-type="cycle">🚴 Bisiklet</button>
+      <button class="activity-btn" data-type="drive">🚗 Araç</button>
+    </div>
     <div class="color-row" id="color-row"></div>
     <div class="sheet-actions">
       <button id="discard-route" class="text-btn">Kaydetme</button>
@@ -126,6 +132,20 @@
     </div>
   </div>
 </div>
+
+<!-- Metin Modalı (Gizlilik / Kullanım) -->
+<div id="text-modal" class="pw-backdrop" hidden>
+  <div class="pw-dialog text-dialog">
+    <h3 class="pw-title" id="text-modal-title"></h3>
+    <div class="text-modal-content" id="text-modal-content"></div>
+    <div class="pw-actions">
+      <button id="text-modal-close" class="primary-btn">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- JSON İçe Aktar Input (Gizli) -->
+<input type="file" id="json-import-input" accept=".json,.txt" hidden />
 
 <div id="toast" class="toast" hidden></div>
 

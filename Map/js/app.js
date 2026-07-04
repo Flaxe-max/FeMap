@@ -7,6 +7,7 @@
   var STORAGE_KEY   = "rota_app_routes_v1";
   var STORAGE_LANG  = "rota_lang";
   var STORAGE_THEME = "rota_theme";
+  var STORAGE_TAB   = "rota_tab_pos";
   var APP_VERSION   = "1.0.0";
   var SIM_PASSWORD  = "feware26";
 
@@ -49,15 +50,18 @@
       settings_title: "Ayarlar",
       settings_appearance: "GÖRÜNÜM", settings_theme: "Tema",
       settings_theme_dark: "Karanlık", settings_theme_light: "Aydınlık", settings_theme_system: "Sistem",
+      settings_tab_pos: "Menü Konumu", settings_tab_top: "Üst", settings_tab_bottom: "Alt",
       settings_language: "DİL",
       settings_dev: "GELİŞTİRİCİ",
       settings_sim_btn: "Simülasyon Moduna Gir",
       settings_sim_desc: "Gerçek GPS olmadan rotaları test edin",
       settings_sim_active: "Simülasyon Modu Aktif ✓",
+      settings_sim_exit: "Simülasyon Modundan Çık",
       settings_about: "HAKKINDA",
       settings_app_name_label: "Uygulama", settings_version: "Versiyon",
       settings_dev_name: "Geliştirici", settings_contact: "İletişim",
       settings_privacy: "Gizlilik Politikası", settings_terms: "Kullanım Koşulları",
+      settings_export_data: "Verileri Dışa Aktar", settings_import_data: "Verileri İçe Aktar",
       settings_clear_data: "Tüm Verileri Sil",
       settings_clear_confirm: "Tüm kayıtlı rotalar kalıcı olarak silinecek. Emin misiniz?",
       settings_data_section: "VERİLER",
@@ -74,8 +78,10 @@
       sim_auto_route: "Waypoint eklenmedi — otomatik rota oluşturuldu",
       sim_started_log: "m/s",
       toast_sim_enabled: "🧪 Simülasyon modu etkinleştirildi",
+      toast_sim_disabled: "Simülasyon modu kapatıldı",
       toast_data_cleared: "✓ Tüm veriler silindi",
-      toast_privacy_soon: "Yakında eklenecek",
+      toast_imported: "✓ Veriler içe aktarıldı",
+      toast_import_err: "Hatalı dosya formatı",
     },
     en: {
       tab_map: "Map", tab_saved: "Saved", tab_settings: "Settings",
@@ -101,15 +107,18 @@
       settings_title: "Settings",
       settings_appearance: "APPEARANCE", settings_theme: "Theme",
       settings_theme_dark: "Dark", settings_theme_light: "Light", settings_theme_system: "System",
+      settings_tab_pos: "Menu Position", settings_tab_top: "Top", settings_tab_bottom: "Bottom",
       settings_language: "LANGUAGE",
       settings_dev: "DEVELOPER",
       settings_sim_btn: "Enter Simulation Mode",
       settings_sim_desc: "Test routes without real GPS",
       settings_sim_active: "Simulation Mode Active ✓",
+      settings_sim_exit: "Exit Simulation Mode",
       settings_about: "ABOUT",
       settings_app_name_label: "App", settings_version: "Version",
       settings_dev_name: "Developer", settings_contact: "Contact",
       settings_privacy: "Privacy Policy", settings_terms: "Terms of Use",
+      settings_export_data: "Export Data", settings_import_data: "Import Data",
       settings_clear_data: "Clear All Data",
       settings_clear_confirm: "All saved routes will be permanently deleted. Are you sure?",
       settings_data_section: "DATA",
@@ -126,8 +135,10 @@
       sim_auto_route: "No waypoints — auto route generated",
       sim_started_log: "m/s",
       toast_sim_enabled: "🧪 Simulation mode enabled",
+      toast_sim_disabled: "Simulation mode disabled",
       toast_data_cleared: "✓ All data cleared",
-      toast_privacy_soon: "Coming soon",
+      toast_imported: "✓ Data imported",
+      toast_import_err: "Invalid file format",
     }
   };
 
@@ -152,7 +163,9 @@
   var settingDestination = false;
   var pendingRoute = null;
   var selectedColor = COLORS[0];
+  var selectedActivity = "walk";
   var arrivalConsecutive = 0;
+  var currentTabPos = localStorage.getItem(STORAGE_TAB) || "top";
 
   // Simülatör
   var SIM_MODE = (new URLSearchParams(window.location.search).get("simulate") === "1") ||
@@ -355,9 +368,22 @@
     if (SIM_MODE) {
       startSimulator();
     } else {
-      watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
-        enableHighAccuracy: true, maximumAge: 1000, timeout: 15000
-      });
+      if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation) {
+        window.Capacitor.Plugins.BackgroundGeolocation.addWatcher({
+          backgroundMessage: "Arka planda konum takip ediliyor",
+          backgroundTitle: "Rota GPS",
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: 5
+        }, function(location, err) {
+           if (err) { onPositionError({code: 2}); return; }
+           onPosition({ coords: { latitude: location.latitude, longitude: location.longitude, accuracy: location.accuracy } });
+        }).then(function(id) { watchId = id; });
+      } else {
+        watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
+          enableHighAccuracy: true, maximumAge: 1000, timeout: 15000
+        });
+      }
     }
   }
 
@@ -415,7 +441,14 @@
     tracking = false;
 
     if (SIM_MODE) stopSimulator();
-    if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    if (watchId !== null) { 
+      if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation && typeof watchId === "string") {
+        window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: watchId });
+      } else if (navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId); 
+      }
+      watchId = null; 
+    }
     clearInterval(timerHandle);
 
     $("record-btn").classList.remove("active");
@@ -447,6 +480,18 @@
     initSimUI();
     switchTab("map");
     showToast(t("toast_sim_enabled"));
+    renderSettings();
+  }
+
+  function disableSimMode() {
+    SIM_MODE = false;
+    sessionStorage.removeItem("sim_mode");
+    var badge = $("sim-badge");
+    var panel = $("sim-panel");
+    if (badge) badge.remove();
+    if (panel) panel.remove();
+    simUIInitialized = false;
+    showToast(t("toast_sim_disabled"));
     renderSettings();
   }
 
@@ -608,6 +653,16 @@
     $("sheet-time").textContent = formatDuration(pendingRoute.duration);
     $("route-name").value = "";
     buildColorRow();
+    
+    // Bind Activity Type buttons
+    document.querySelectorAll(".activity-btn").forEach(function(btn) {
+      btn.onclick = function() {
+        selectedActivity = this.dataset.type;
+        document.querySelectorAll(".activity-btn").forEach(function(b) { b.classList.remove("active"); });
+        this.classList.add("active");
+      };
+    });
+
     var sheet = $("save-sheet");
     sheet.hidden = false;
     var inner = sheet.querySelector(".sheet");
@@ -638,7 +693,7 @@
     var routes = loadRoutes();
     routes.unshift({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name: name, color: selectedColor, simulated: SIM_MODE,
+      name: name, color: selectedColor, activity: selectedActivity, simulated: SIM_MODE,
       points: pendingRoute.points, distance: pendingRoute.distance,
       duration: pendingRoute.duration, createdAt: Date.now()
     });
@@ -685,8 +740,9 @@
       var info = document.createElement("div");
       info.className = "route-info";
       var simTag = r.simulated ? '<span class="route-sim-tag">SİM</span>' : "";
-      info.innerHTML = '<div class="route-name">' + simTag + '</div><div class="route-meta"></div>';
-      info.querySelector(".route-name").appendChild(document.createTextNode(r.name));
+      var actIcon = r.activity === "cycle" ? "🚴 " : r.activity === "drive" ? "🚗 " : "🚶 ";
+      info.innerHTML = '<div class="route-name">' + actIcon + '<span class="rn-text"></span>' + simTag + '</div><div class="route-meta"></div>';
+      info.querySelector(".rn-text").appendChild(document.createTextNode(r.name));
       info.querySelector(".route-meta").textContent =
         formatDate(r.createdAt) + " · " + formatDistance(r.distance) + " · " + formatDuration(r.duration);
 
@@ -749,6 +805,17 @@
     });
     rows.push('    </div>');
     rows.push('  </div>');
+    rows.push('  <div class="settings-divider"></div>');
+    rows.push('  <div class="settings-row">');
+    rows.push('    <span class="settings-row-label">' + t("settings_tab_pos") + '</span>');
+    rows.push('    <div class="theme-seg tab-pos-seg">');
+    ["top","bottom"].forEach(function(pos) {
+      var label = pos === "top" ? t("settings_tab_top") : t("settings_tab_bottom");
+      var icon = pos === "top" ? "⬆️" : "⬇️";
+      rows.push('      <button class="seg-btn tab-seg-btn' + (currentTabPos === pos ? " active" : "") + '" data-pos-val="' + pos + '">' + icon + ' ' + label + '</button>');
+    });
+    rows.push('    </div>');
+    rows.push('  </div>');
     rows.push('</div>');
 
     // Dil
@@ -770,6 +837,10 @@
       rows.push('    <span class="sim-active-badge">✓</span>');
       rows.push('    <span class="settings-row-label" style="color:var(--amber-400)">' + t("settings_sim_active") + '</span>');
       rows.push('  </div>');
+      rows.push('  <div class="settings-divider"></div>');
+      rows.push('  <button class="settings-row settings-row-btn" id="exit-sim-btn">');
+      rows.push('    <span class="settings-row-label" style="color:var(--signal-500)">' + t("settings_sim_exit") + '</span>');
+      rows.push('  </button>');
     } else {
       rows.push('  <button class="settings-row settings-row-btn" id="open-sim-btn">');
       rows.push('    <div class="settings-row-lock">🔒</div>');
@@ -814,7 +885,15 @@
 
     // Veri
     rows.push('<div class="settings-section-label">' + t("settings_data_section") + '</div>');
-    rows.push('<div class="settings-card settings-card-danger">');
+    rows.push('<div class="settings-card">');
+    rows.push('  <button class="settings-row settings-row-btn" id="export-data-btn">');
+    rows.push('    <span>📤 ' + t("settings_export_data") + '</span>');
+    rows.push('  </button>');
+    rows.push('  <div class="settings-divider"></div>');
+    rows.push('  <button class="settings-row settings-row-btn" id="import-data-btn">');
+    rows.push('    <span>📥 ' + t("settings_import_data") + '</span>');
+    rows.push('  </button>');
+    rows.push('  <div class="settings-divider"></div>');
     rows.push('  <button class="settings-row settings-row-btn settings-row-danger" id="clear-data-btn">');
     rows.push('    <span>🗑 ' + t("settings_clear_data") + '</span>');
     rows.push('  </button>');
@@ -844,6 +923,15 @@
         renderSettings();
       });
     });
+    // Tabbar pozisyon butonları
+    document.querySelectorAll(".tab-seg-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        currentTabPos = this.dataset.posVal;
+        localStorage.setItem(STORAGE_TAB, currentTabPos);
+        document.body.classList.toggle("tabbar-bottom", currentTabPos === "bottom");
+        renderSettings();
+      });
+    });
     // Dil butonları
     document.querySelectorAll(".lang-btn").forEach(function (btn) {
       btn.addEventListener("click", function () { setLanguage(this.dataset.lang); });
@@ -851,12 +939,18 @@
     // Sim butonu
     var simBtn = $("open-sim-btn");
     if (simBtn) simBtn.addEventListener("click", openPwModal);
+    var exitSimBtn = $("exit-sim-btn");
+    if (exitSimBtn) exitSimBtn.addEventListener("click", disableSimMode);
     // Politika
     var privBtn = $("privacy-btn");
-    if (privBtn) privBtn.addEventListener("click", function () { showToast(t("toast_privacy_soon")); });
+    if (privBtn) privBtn.addEventListener("click", function () { openTextModal(t("settings_privacy"), getPrivacyText()); });
     var termsBtn = $("terms-btn");
-    if (termsBtn) termsBtn.addEventListener("click", function () { showToast(t("toast_privacy_soon")); });
-    // Veri silme
+    if (termsBtn) termsBtn.addEventListener("click", function () { openTextModal(t("settings_terms"), getTermsText()); });
+    // Veri işlemleri
+    var expBtn = $("export-data-btn");
+    if (expBtn) expBtn.addEventListener("click", exportData);
+    var impBtn = $("import-data-btn");
+    if (impBtn) impBtn.addEventListener("click", function() { $("json-import-input").click(); });
     var clearBtn = $("clear-data-btn");
     if (clearBtn) clearBtn.addEventListener("click", function () {
       if (confirm(t("settings_clear_confirm"))) {
@@ -898,6 +992,72 @@
       input.classList.add("shake");
       setTimeout(function () { input.classList.remove("shake"); }, 500);
     }
+  }
+
+  // ============================================================
+  // GİZLİLİK & KULLANIM KOŞULLARI MODALI
+  // ============================================================
+  function getPrivacyText() {
+    return currentLang === "en" ?
+      "<p><strong>1. Data Privacy:</strong> All routes and locations are saved locally on your device. We do NOT collect or send any data to remote servers.</p>" +
+      "<p><strong>2. Map Data:</strong> The map tiles are provided by OpenStreetMap contributors. Using the map means you download tiles from OSM servers, which may log your IP address.</p>" :
+      "<p><strong>1. Veri Gizliliği:</strong> Kaydedilen tüm rotalarınız ve GPS verileriniz sadece cihazınızda yerel olarak (localStorage) saklanır. Hiçbir kişisel veri veya konum uzak sunuculara gönderilmez.</p>" +
+      "<p><strong>2. Harita Verileri:</strong> Harita görüntüleri Açık Kaynaklı OpenStreetMap (OSM) sunucularından çekilir. Bu işlem sırasında IP adresiniz OSM sunucuları tarafından geçici olarak görülebilir.</p>";
+  }
+
+  function getTermsText() {
+    return currentLang === "en" ?
+      "<p><strong>1. Usage:</strong> Use this app safely. Do not stare at the screen while driving or crossing streets.</p>" +
+      "<p><strong>2. Liability:</strong> FeWare Technology is not responsible for any inaccuracies in GPS or mapping data.</p>" :
+      "<p><strong>1. Kullanım:</strong> Lütfen uygulamayı güvenli bir şekilde kullanın. Araç kullanırken veya karşıdan karşıya geçerken ekrana bakmayınız.</p>" +
+      "<p><strong>2. Sorumluluk:</strong> FeWare Technology, GPS hassasiyetinden veya harita verilerindeki yanlışlıklardan kaynaklanabilecek hiçbir kazadan/durumdan sorumlu tutulamaz.</p>";
+  }
+
+  function openTextModal(title, contentHTML) {
+    $("text-modal-title").textContent = title;
+    $("text-modal-content").innerHTML = contentHTML;
+    $("text-modal").hidden = false;
+  }
+  
+  function closeTextModal() {
+    $("text-modal").hidden = true;
+  }
+
+  // ============================================================
+  // VERİ İÇE/DIŞA AKTARMA
+  // ============================================================
+  function exportData() {
+    var routes = loadRoutes();
+    var dataStr = JSON.stringify(routes, null, 2);
+    var blob = new Blob([dataStr], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "Rota_Yedek_" + new Date().toISOString().split("T")[0] + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        var parsed = JSON.parse(ev.target.result);
+        if (!Array.isArray(parsed)) throw new Error("Not an array");
+        if (parsed.length > 0 && !parsed[0].id) throw new Error("Invalid structure");
+        persistRoutes(parsed);
+        renderSavedList();
+        showToast(t("toast_imported"));
+      } catch (err) {
+        showToast(t("toast_import_err"));
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
   }
 
   // ============================================================
@@ -952,6 +1112,16 @@
     $("pw-modal").addEventListener("click", function (e) {
       if (e.target === $("pw-modal")) closePwModal();
     });
+    
+    // Metin Modalı
+    $("text-modal-close").addEventListener("click", closeTextModal);
+    $("text-modal").addEventListener("click", function (e) {
+      if (e.target === $("text-modal")) closeTextModal();
+    });
+
+    // Dosya İçe Aktar
+    var fileInput = $("json-import-input");
+    if (fileInput) fileInput.addEventListener("change", handleImport);
 
     // Sistem tema değişikliği dinle
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
@@ -964,6 +1134,7 @@
   // ============================================================
   document.addEventListener("DOMContentLoaded", function () {
     applyTheme(currentTheme);
+    document.body.classList.toggle("tabbar-bottom", currentTabPos === "bottom");
     document.documentElement.lang = currentLang;
     initMap();
     bindEvents();

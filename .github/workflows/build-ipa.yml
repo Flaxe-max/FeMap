@@ -74,27 +74,15 @@ jobs:
       - name: "🔄 Capacitor sync (web → iOS native)"
         run: npx cap sync ios
 
-      # ── 6. GPS KoNUM İZİNLERİ ───────────────────────────────
-      # iOS, konum API'sine erişmeden önce kullanıcıya neden gerektiğini
-      # göstermek zorundadır. Bu açıklamalar Info.plist'te saklanır.
-      # NSLocationWhenInUseUsageDescription: uygulama açıkken konum
-      # NSLocationAlwaysAndWhenInUseUsageDescription: arka planda konum
-      - name: "🗺️ Konum izinlerini Info.plist'e ekle"
+      # ── 6. LOKASYON VE ARKA PLAN İZİNLERİNİ AYARLA ───────────────────────
+      # Uygulamanın GPS kullanabilmesi ve arka planda çalışabilmesi için Info.plist
+      # dosyasına Apple'ın zorunlu tuttuğu açıklama metni ve background mode eklenir.
+      - name: "🗺️ Info.plist arka plan konum izinlerini ekle"
         run: |
-          PLIST="ios/App/App/Info.plist"
-          echo "📄 Info.plist yolu: $PLIST"
-
-          /usr/libexec/PlistBuddy -c \
-            "Add :NSLocationWhenInUseUsageDescription string 'Rota uygulaması, harita üzerinde konumunuzu göstermek ve GPS rotası oluşturmak için konum iznine ihtiyaç duyar.'" \
-            "$PLIST"
-
-          /usr/libexec/PlistBuddy -c \
-            "Add :NSLocationAlwaysAndWhenInUseUsageDescription string 'Rota uygulaması, arka planda da GPS takibi yapabilmek için konum iznine ihtiyaç duyar.'" \
-            "$PLIST"
-
-          echo "✅ Konum izinleri eklendi:"
-          /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Print :NSLocationAlwaysAndWhenInUseUsageDescription" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'Konumunuzu harita üzerinde göstermek ve rota çizmek için kullanıyoruz.'" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string 'Arka planda bile rotanızı takip edebilmemiz için her zaman konum iznine ihtiyaç var.'" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string location" ios/App/App/Info.plist || true
 
       # ── 7. COCOAPODS BAĞIMLILIKLARI ──────────────────────────
       # Capacitor iOS köprüsü CocoaPods üzerinden dağıtılır.

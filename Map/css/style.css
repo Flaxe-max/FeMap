@@ -673,3 +673,62 @@ input  { font-family: inherit; }
   padding: 1px 5px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
 }
 .sim-wp-label::before { display: none !important; }
+
+/* ============================================================
+   Aktivite Tipi (Activity Type)
+   ============================================================ */
+.activity-row {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+.activity-btn {
+  flex: 1; background: var(--ink-950); border: 1.5px solid var(--line-700);
+  color: var(--paper-400); border-radius: 10px; padding: 10px 4px;
+  font-size: 13px; font-weight: 600; text-align: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.activity-btn.active {
+  border-color: var(--teal-400); color: var(--teal-400); background: rgba(47,214,179,0.08);
+}
+.activity-btn:hover:not(.active) {
+  border-color: var(--line-600); color: var(--paper-100);
+}
+
+/* ============================================================
+   Metin Modalı (Gizlilik / Kullanım)
+   ============================================================ */
+.text-dialog {
+  max-width: 400px;
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+}
+.text-modal-content {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  font-size: 13.5px; color: var(--paper-200); line-height: 1.5;
+  margin: 10px 0 20px; padding-right: 8px;
+}
+.text-modal-content p { margin: 0 0 12px; }
+.text-modal-content strong { color: var(--paper-100); }
+
+/* ============================================================
+   Tabbar Alt Konum (Bottom Menu)
+   ============================================================ */
+body.tabbar-bottom #app {
+  flex-direction: column-reverse;
+}
+body.tabbar-bottom .tabbar {
+  padding: 8px 10px calc(var(--safe-bottom) + 8px);
+  border-bottom: none; border-top: 1px solid var(--line-700);
+}
+body.tabbar-bottom .view {
+  top: 0; 
+  bottom: calc(var(--safe-bottom) + 56px); 
+}
+body.tabbar-bottom .controls {
+  bottom: 24px;
+}
+body.tabbar-bottom .sim-panel {
+  bottom: 80px;
+}
+body.tabbar-bottom .toast {
+  bottom: calc(var(--safe-bottom) + 80px);
+}
