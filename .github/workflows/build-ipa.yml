@@ -58,6 +58,16 @@ jobs:
         env:
           CI: true
 
+      # ── 4.5. İKON VE AÇILIŞ EKRANI OLUŞTUR ───────────────────
+      # @capacitor/assets paketi kullanılarak Map/FeMap.png dosyasından
+      # gerekli tüm iOS ikon ve splash screen boyutları üretilir.
+      - name: "🎨 İkonları oluştur (FeMap.png)"
+        run: |
+          mkdir -p assets
+          cp Map/FeMap.png assets/logo.png
+          npm install @capacitor/assets --no-save
+          npx capacitor-assets generate --ios
+
       # ── 5. WEB DOSYALARINI IOS'A KOPYALA ────────────────────
       # Map/ klasöründeki HTML/CSS/JS dosyalarını iOS native projesine kopyalar
       # ve Capacitor JavaScript köprüsünü (capacitor.js) enjekte eder.

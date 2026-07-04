@@ -1,6 +1,6 @@
 {
   "appId": "com.feware.rota",
-  "appName": "Rota",
+  "appName": "FeMap",
   "webDir": "Map",
   "ios": {
     "contentInset": "always",
