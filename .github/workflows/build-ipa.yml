@@ -1,0 +1,164 @@
+# =============================================================
+# Rota GPS — İmzasız IPA Build Workflow
+# FeWare Technology
+#
+# Bu workflow, uygulamayı imzasız olarak derler ve GitHub
+# Actions artifact olarak .ipa dosyası üretir.
+# AltStore / SideStore ile iPhone'a sideload edilebilir.
+# =============================================================
+
+name: Build Unsigned IPA
+
+on:
+  # Ana branch'e push olduğunda otomatik tetikle
+  push:
+    branches: [main]
+
+  # GitHub Actions sekmesinden "Run workflow" butonuyla elle tetikle
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "Build notu (isteğe bağlı)"
+        required: false
+        default: "Manuel build"
+
+jobs:
+  build-ios:
+    # Apple araçları (Xcode, PlistBuddy, CocoaPods) için macOS gerekli
+    runs-on: macos-latest
+
+    steps:
+
+      # ── 1. KOD İNDİR ─────────────────────────────────────────
+      # Repository'deki tüm dosyaları runner'a klonlar
+      - name: "📥 Kodu indir"
+        uses: actions/checkout@v4
+
+      # ── 2. NODE.JS KURULUMU ──────────────────────────────────
+      # Capacitor CLI'yi çalıştırmak için Node.js gerekli
+      # cache: 'npm' — node_modules'ü önbellekte tutar, build hızlanır
+      - name: "🟢 Node.js 20 kurulumu"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # ── 3. NPM BAĞIMLILIKLARI ────────────────────────────────
+      # package.json'daki @capacitor/core, @capacitor/cli, @capacitor/ios'u yükler
+      # --ci: package-lock.json'a tam uyar, daha güvenilir CI build
+      - name: "📦 npm bağımlılıklarını yükle"
+        run: npm ci
+
+      # ── 4. CAPACITOR IOS PLATFORM OLUŞTUR ───────────────────
+      # ios/ klasörünü Capacitor şablonundan sıfırdan üretir.
+      # İçinde Xcode projesi, Podfile ve Info.plist oluşturulur.
+      # Not: ios/ .gitignore'da olduğu için her build'de yeniden üretilir.
+      - name: "📱 Capacitor iOS platformunu ekle"
+        run: npx cap add ios
+        env:
+          CI: true
+
+      # ── 5. WEB DOSYALARINI IOS'A KOPYALA ────────────────────
+      # Map/ klasöründeki HTML/CSS/JS dosyalarını iOS native projesine kopyalar
+      # ve Capacitor JavaScript köprüsünü (capacitor.js) enjekte eder.
+      - name: "🔄 Capacitor sync (web → iOS native)"
+        run: npx cap sync ios
+
+      # ── 6. GPS KoNUM İZİNLERİ ───────────────────────────────
+      # iOS, konum API'sine erişmeden önce kullanıcıya neden gerektiğini
+      # göstermek zorundadır. Bu açıklamalar Info.plist'te saklanır.
+      # NSLocationWhenInUseUsageDescription: uygulama açıkken konum
+      # NSLocationAlwaysAndWhenInUseUsageDescription: arka planda konum
+      - name: "🗺️ Konum izinlerini Info.plist'e ekle"
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          echo "📄 Info.plist yolu: $PLIST"
+
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSLocationWhenInUseUsageDescription string 'Rota uygulaması, harita üzerinde konumunuzu göstermek ve GPS rotası oluşturmak için konum iznine ihtiyaç duyar.'" \
+            "$PLIST"
+
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSLocationAlwaysAndWhenInUseUsageDescription string 'Rota uygulaması, arka planda da GPS takibi yapabilmek için konum iznine ihtiyaç duyar.'" \
+            "$PLIST"
+
+          echo "✅ Konum izinleri eklendi:"
+          /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :NSLocationAlwaysAndWhenInUseUsageDescription" "$PLIST"
+
+      # ── 7. COCOAPODS BAĞIMLILIKLARI ──────────────────────────
+      # Capacitor iOS köprüsü CocoaPods üzerinden dağıtılır.
+      # Podfile.lock'a göre tam sürümleri indirir (--repo-update ile kayıt güncellenir)
+      - name: "🍫 CocoaPods bağımlılıklarını yükle"
+        run: |
+          cd ios/App
+          pod install --repo-update
+
+      # ── 8. XCODE İMZASIZ BUILD ───────────────────────────────
+      # CODE_SIGNING_ALLOWED=NO  → Xcode imza arama
+      # CODE_SIGNING_REQUIRED=NO → İmza zorunluluğunu kaldır
+      # CODE_SIGN_IDENTITY=""    → Boş imza kimliği
+      # PROVISIONING_PROFILE=""  → Boş provisioning profile
+      # -destination generic/platform=iOS → arm64 gerçek cihaz binary
+      # -derivedDataPath DerivedData → build çıktı klasörü
+      - name: "🔨 Xcode Release imzasız build"
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE="" \
+            -derivedDataPath DerivedData \
+            IPHONEOS_DEPLOYMENT_TARGET=14.0
+
+      # ── 9. IPA PAKETİ OLUŞTUR ────────────────────────────────
+      # IPA formatı: zip içinde Payload/UygulamaAdi.app klasörü
+      # AltStore/SideStore bu .ipa dosyasını alıp kendi sertifikasıyla imzalar
+      - name: "📦 IPA paketi oluştur (Payload → .ipa)"
+        run: |
+          # .app dosyasını bul
+          APP_PATH=$(find DerivedData/Build/Products -name "*.app" -maxdepth 4 | grep -v "Tests" | head -1)
+          echo "🔍 Bulunan .app: $APP_PATH"
+
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ .app dosyası bulunamadı!"
+            find DerivedData/Build/Products -type d | head -20
+            exit 1
+          fi
+
+          # Payload/ yapısı oluştur ve ipa olarak paketle
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -qr Rota.ipa Payload/
+
+          echo "✅ Rota.ipa oluşturuldu: $(du -h Rota.ipa | cut -f1)"
+
+      # ── 10. IPA'Yİ ARTIFACT OLARAK YÜKLE ─────────────────────
+      # GitHub Actions sekmesinde "unsigned-ipa" adıyla görünür
+      # 30 gün boyunca indirilebilir olur
+      - name: "⬆️ IPA'yı artifact olarak yükle"
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipa
+          path: Rota.ipa
+          retention-days: 30
+
+      # ── 11. ÖZET ─────────────────────────────────────────────
+      # GitHub Actions job summary'ye bilgi yaz
+      - name: "📊 Build özeti"
+        if: success()
+        run: |
+          echo "## ✅ Build Başarılı" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Alan | Bilgi |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| App ID | com.feware.rota |" >> $GITHUB_STEP_SUMMARY
+          echo "| Versiyon | $(cat Map/manifest.json 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("version","1.0.0"))' 2>/dev/null || echo '1.0.0') |" >> $GITHUB_STEP_SUMMARY
+          echo "| IPA Boyutu | $(du -h Rota.ipa | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | unsigned-ipa |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **AltStore/SideStore ile sideload için:** Actions sekmesi → Bu workflow run → Artifacts → unsigned-ipa indir" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,24 @@
+# Bağımlılıklar
+node_modules/
+
+# Capacitor — platform klasörleri CI'da sıfırdan üretilir
+ios/
+android/
+
+# Xcode build çıktıları
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# IPA ve paketleme
+*.ipa
+Payload/
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+
+# Editör
+.vscode/
+.idea/
+*.swp

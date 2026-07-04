@@ -1,0 +1,9 @@
+{
+  "name": "Rota",
+  "short_name": "Rota",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B0F17",
+  "theme_color": "#0B0F17",
+  "orientation": "portrait"
+}

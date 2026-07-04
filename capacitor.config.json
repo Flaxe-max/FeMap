@@ -1,0 +1,15 @@
+{
+  "appId": "com.feware.rota",
+  "appName": "Rota",
+  "webDir": "Map",
+  "ios": {
+    "contentInset": "always",
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "backgroundColor": "#0B0F17"
+    }
+  }
+}
