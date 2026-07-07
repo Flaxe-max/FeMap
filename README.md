@@ -9,61 +9,61 @@
   [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
   [![Leaflet](https://img.shields.io/badge/Leaflet-199900?style=for-the-badge&logo=leaflet&logoColor=white)](https://leafletjs.com/)
   
-  *Gelişmiş GPS Rota Takip Uygulaması*
+  *Advanced GPS Route Tracking Application*
 </div>
 
 ---
 
-## 🚀 Proje Hakkında
+## 🚀 About The Project
 
-**Feware** tarafından geliştirilen Rota GPS, OpenStreetMap ve Leaflet tabanlı, internet veya hesap gerektirmeyen modern bir GPS takip uygulamasıdır. Capacitor altyapısı kullanılarak iOS için özel olarak optimize edilmiştir. Kayıtlı rotalarınız cihazınızda yerel olarak güvenle saklanır.
+Developed by **Feware**, FeMap (Rota GPS) is a modern GPS tracking application based on OpenStreetMap and Leaflet that does not require an internet connection or an account to use core tracking features. It is specifically optimized for iOS using the Capacitor framework. Your recorded routes are safely stored locally on your device.
 
-## ✨ Özellikler
+## ✨ Features
 
-- 📍 **Canlı Takip:** Konumunuzu periyodik olarak alarak harita üzerinde canlı rota çizer.
-- 🎯 **Varış Noktası:** Haritada dokunarak bir varış noktası belirleyin, hedefe ~30 metre yaklaştığınızda kayıt otomatik olarak sonlansın.
-- 💾 **Rota Kaydı:** Rota bitiminde isimlendirme ve aktivite tipi (yürüyüş, bisiklet, araç) seçenekleriyle rotalarınızı saklayın.
-- 🌓 **Temalar:** Sistem ile tam entegre Karanlık ve Aydınlık tema desteği.
-- 🌍 **Dil Desteği:** Türkçe ve İngilizce dil seçenekleriyle global kullanım.
+- 📍 **Live Tracking:** Periodically fetches your location and draws a live route on the map.
+- 🎯 **Destination Setting:** Set a destination by tapping on the map. Recording automatically stops when you are within ~30 meters of the target.
+- 💾 **Route Recording:** Save your routes by naming them and selecting an activity type (walking, cycling, driving).
+- 🌓 **Themes:** Fully integrated System Dark and Light theme support.
+- 🌍 **Language Support:** Bilingual support with English and Turkish options.
 
 ---
 
-## 🛠️ Yerelde Geliştirme
+## 🛠️ Local Development
 
-Projeyi bilgisayarınızda çalıştırmak ve test etmek için aşağıdaki adımları izleyebilirsiniz:
+To run and test the project on your local machine, follow these steps:
 
 ```bash
-# Proje dizininde Python ile yerel sunucu başlatın:
+# Start a local server with Python in the project directory:
 python -m http.server 8765 --directory Map
 
-# Tarayıcı üzerinden yerel sunucuya erişim:
+# Access the local server via browser:
 http://localhost:8765
 ```
 
 ---
 
-## 📦 IPA Üretimi & iOS Yükleme
+## 📦 IPA Generation & iOS Sideloading
 
-Bu proje modern web teknolojileri (HTML/JS/CSS) ile yazılmış ve [Capacitor](https://capacitorjs.com/) köprüsü sayesinde iOS uygulamasına dönüştürülmektedir. **Apple cihazına (Mac) ihtiyacınız yoktur**; derleme işlemleri GitHub Actions üzerindeki ücretsiz macOS sunucularında otomatik olarak gerçekleştirilir.
+This project is built with modern web technologies (HTML/JS/CSS) and converted into an iOS application using the [Capacitor](https://capacitorjs.com/) bridge. **You do not need a Mac device**; builds are automatically handled on GitHub Actions' free macOS runners.
 
-### 🔄 GitHub Actions ile Derleme (Otomatik IPA)
+### 🔄 Build via GitHub Actions (Automated IPA)
 
-1. Projenin GitHub reposunda üst kısımdan **Actions** sekmesini açın.
-2. Sol taraftaki panelden **"Build Unsigned IPA"** workflow'unu seçin.
-3. Sağdaki **"Run workflow"** butonuna tıklayarak derlemeyi başlatın.
-4. Sistemin paketleri indirmesi ve projeyi inşa etmesi yaklaşık **8-15 dakika** sürebilir.
+1. Navigate to the **Actions** tab on your GitHub repository.
+2. Select the **"Build Unsigned IPA"** workflow from the left panel.
+3. Click the **"Run workflow"** button on the right to start the build.
+4. The system will download packages and build the project. This takes approximately **8-15 minutes**.
 
-### 📥 Kurulum
+### 📥 Installation
 
-Derleme başarıyla tamamlandığında yeşil tikli çalıştırmaya tıklayın ve sayfanın en altındaki **Artifacts** bölümüne gidin. `unsigned-ipa` bağlantısına tıklayarak `.zip` dosyasını indirin. 
+Once the build successfully completes, click the green checkmark run and scroll down to the **Artifacts** section at the bottom. Click on the `unsigned-ipa` link to download the `.zip` file.
 
-İndirdiğiniz dosyanın içindeki `Rota.ipa` uygulamasını **AltStore** veya **SideStore** gibi araçlar kullanarak kolayca iPhone cihazınıza yükleyebilirsiniz.
+You can easily sideload the `Rota.ipa` file inside the downloaded zip to your iPhone using tools like **AltStore** or **SideStore**.
 
 ---
 
-## 🔒 Gizlilik ve Veri Güvenliği
+## 🔒 Privacy and Data Security
 
-Uygulamamız kullanıcı gizliliğine ve veri güvenliğine maksimum derecede önem verir. Çizdiğiniz rotalar yalnızca cihazınızın `localStorage` belleğinde tutulur; **hiçbir zaman buluta veya uzak sunuculara yüklenmez**. Uygulama açık olduğu sürece lokasyon işlemleri gerçekleşir.
+Our application prioritizes user privacy and data security. The routes you draw are only stored in your device's `localStorage` memory; **they are never uploaded to the cloud or remote servers**. Location processing only occurs while the app is active.
 
 ---
 
@@ -71,7 +71,7 @@ Uygulamamız kullanıcı gizliliğine ve veri güvenliğine maksimum derecede ö
 
   **Building digital worlds**
   
-  [🌐 Web Sitemizi Ziyaret Edin](http://feware.unaux.com/index.html?i=1)
+  [🌐 Visit Our Website](http://feware.unaux.com/index.html?i=1)
   
   *© 2026 FeWare Technology. All Rights Reserved.*
 </div>
